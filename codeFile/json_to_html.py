@@ -10,11 +10,15 @@ if getattr(sys, 'frozen', False):
     BASE_RESOURCE_DIR = sys._MEIPASS
     APP_DIR = os.path.dirname(sys.executable)
     DEFAULT_TEMPLATE = os.path.join(BASE_RESOURCE_DIR, "template.html")
-    DEFAULT_OUT_DIR = os.path.join(APP_DIR, "output_HTML")
+    # TrianglgAgency_charCreater/output/output_HTML
+    DEFAULT_OUT_DIR = os.path.join(os.path.dirname(APP_DIR), "output", "output_HTML")
 else:
     # Dev
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    PROJECT_ROOT = os.path.dirname(BASE_DIR)
     DEFAULT_TEMPLATE = os.path.join(os.path.dirname(__file__), "template.html")
-    DEFAULT_OUT_DIR = os.path.join(os.path.dirname(__file__), "output_HTML")
+    # TrianglgAgency_charCreater/output/output_HTML
+    DEFAULT_OUT_DIR = os.path.join(PROJECT_ROOT, "output", "output_HTML")
 
 def load_json(path):
     with open(path, "r", encoding="utf-8") as f:
