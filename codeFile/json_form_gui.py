@@ -5,6 +5,8 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox, filedialog
 import subprocess
+import threading
+import time
 
 try:
     import json_to_html
@@ -680,35 +682,80 @@ def main():
         if not validate_data(data):
             return
 
-        # Determine file name and directory
-        name = safe_filename_part(data.get("姓名", ""), "Unnamed")
+        # Progress Window
+        progress_win = tk.Toplevel(root)
+        progress_win.title("正在处理 (Processing)")
+        progress_win.geometry("400x150")
+        progress_win.resizable(False, False)
+        # Center the window
+        root_x = root.winfo_x()
+        root_y = root.winfo_y()
+        root_w = root.winfo_width()
+        root_h = root.winfo_height()
+        win_x = root_x + (root_w - 400) // 2
+        win_y = root_y + (root_h - 150) // 2
+        progress_win.geometry(f"+{win_x}+{win_y}")
         
-        # Structure: cards/<Name>/<Name>.[json|html|pdf]
+        progress_win.transient(root)
+        progress_win.grab_set() # Modal behavior
+
+        lbl = tk.Label(progress_win, text="初始化...", anchor="w")
+        lbl.pack(fill="x", padx=20, pady=(20, 5))
+
+        pb = ttk.Progressbar(progress_win, orient="horizontal", mode="determinate", length=360)
+        pb.pack(padx=20, pady=10)
+        pb["value"] = 0
+        
+        # Determine paths (Main thread)
+        name = safe_filename_part(data.get("姓名", ""), "Unnamed")
         card_dir = os.path.join(CARDS_DIR, name)
         os.makedirs(card_dir, exist_ok=True)
-        
         base_path = os.path.join(card_dir, name)
         json_path = base_path + ".json"
         html_path = base_path + ".html"
         pdf_path = base_path + ".pdf"
 
-        try:
-            # 1. Save JSON
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+        def update_progress(val, text):
+            if not progress_win.winfo_exists(): return
+            pb["value"] = val
+            lbl.config(text=text)
 
-            # 2. Generate HTML (using imported module)
-            # Assuming json_to_html.generate_html(json_path, out_path, template_path)
-            # We use the default template path from the module
-            json_to_html.generate_html(json_path, html_path)
-            
-            # 3. Generate PDF
-            html_to_pdf(html_path, pdf_path)
-            
+        def finish_success():
+            if progress_win.winfo_exists():
+                progress_win.destroy()
             messagebox.showinfo("成功", f"已更新所有文件：\nDirectory: {card_dir}\n\n[OK] JSON\n[OK] HTML\n[OK] PDF")
-            
-        except Exception as e:
-            messagebox.showerror("错误", f"处理失败：\n{str(e)}")
+
+        def finish_error(err_msg):
+            if progress_win.winfo_exists():
+                progress_win.destroy()
+            messagebox.showerror("错误", f"处理失败：\n{err_msg}")
+
+        def task():
+            try:
+                # Step 1
+                root.after(0, lambda: update_progress(10, "正在保存 JSON 数据 (Saving JSON)..."))
+                time.sleep(0.2) 
+                with open(json_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                
+                # Step 2
+                root.after(0, lambda: update_progress(40, "正在生成 HTML 档案 (Generating HTML)..."))
+                time.sleep(0.2)
+                json_to_html.generate_html(json_path, html_path)
+                
+                # Step 3
+                root.after(0, lambda: update_progress(70, "正在渲染 PDF (Rendering PDF)..."))
+                html_to_pdf(html_path, pdf_path)
+                
+                # Done
+                root.after(0, lambda: update_progress(100, "完成！ (Done!)"))
+                time.sleep(0.5)
+                root.after(0, finish_success)
+                
+            except Exception as e:
+                root.after(0, lambda: finish_error(str(e)))
+
+        threading.Thread(target=task, daemon=True).start()
 
     def load_card():
         path = filedialog.askopenfilename(
