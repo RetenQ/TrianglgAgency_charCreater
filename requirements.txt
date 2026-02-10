@@ -1,0 +1,4 @@
+# Add your Python dependencies here, one per line.
+# The following libraries are detected as potential dependencies based on your environment:
+
+pyinstaller

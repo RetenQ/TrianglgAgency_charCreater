@@ -9,9 +9,10 @@ if getattr(sys, 'frozen', False):
     # Frozen
     BASE_RESOURCE_DIR = sys._MEIPASS
     APP_DIR = os.path.dirname(sys.executable)
+    PROJECT_ROOT = os.path.dirname(APP_DIR)
     DEFAULT_TEMPLATE = os.path.join(BASE_RESOURCE_DIR, "template.html")
     # TrianglgAgency_charCreater/output/output_HTML
-    DEFAULT_OUT_DIR = os.path.join(os.path.dirname(APP_DIR), "output", "output_HTML")
+    DEFAULT_OUT_DIR = os.path.join(PROJECT_ROOT, "output", "output_HTML")
 else:
     # Dev
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -37,15 +38,28 @@ def get_image_tag(image_path):
     # We want to replace the inner content with the image, OR replace the whole div.
     # The template has <!-- AVATAR_PLACEHOLDER --> before the div.
     
-    if not image_path or not os.path.exists(image_path):
+    if not image_path:
+        return None
+        
+    # Resolve path
+    real_path = None
+    if os.path.exists(image_path):
+        real_path = image_path
+    else:
+        # Try relative to PROJECT_ROOT
+        p = os.path.join(PROJECT_ROOT, image_path)
+        if os.path.exists(p):
+            real_path = p
+            
+    if not real_path:
         # Return the default placeholder div (as string) or just empty if we don't replace
         return None 
     
     try:
-        with open(image_path, "rb") as f:
+        with open(real_path, "rb") as f:
             data = f.read()
             b64 = base64.b64encode(data).decode("utf-8")
-            ext = os.path.splitext(image_path)[1].lower()
+            ext = os.path.splitext(real_path)[1].lower()
             mime = "image/jpeg"
             if ext == ".png":
                 mime = "image/png"

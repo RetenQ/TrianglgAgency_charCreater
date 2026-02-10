@@ -35,50 +35,52 @@ EDGE_PATH = find_edge_path()
 # Determine paths based on run environment (Frozen/Dev)
 if getattr(sys, 'frozen', False):
     # Running as compiled exe
-    # sys.executable is path/to/RoleCardEditor.exe
     # APP_DIR is e:\三角Allin\TrianglgAgency_charCreater\release
     APP_DIR = os.path.dirname(sys.executable)
     
-    # We want base dir to be e:\三角Allin\TrianglgAgency_charCreater
-    # But release is a subdir. So project root is one level up?
-    # If user moves exe, relative paths might break if resources aren't bundled.
-    # But we are bundling resources in sys._MEIPASS.
+    # Project root is one level up from release
+    PROJECT_ROOT = os.path.dirname(APP_DIR)
     
-    BASE_RESOURCE_DIR = sys._MEIPASS
+    # Try to use external ARC_setting first for user customizability
+    external_setting = os.path.join(PROJECT_ROOT, "ARC_setting")
+    if os.path.exists(os.path.join(external_setting, "Anomaly.json")):
+        SETTING_DIR = external_setting
+    else:
+        # Fallback to bundled resources if external files are missing
+        SETTING_DIR = os.path.join(sys._MEIPASS, "ARC_setting")
     
-    # Resources bundled in EXE
-    ANOMALY_PATH = os.path.join(BASE_RESOURCE_DIR, "ARC_setting", "Anomaly.json")
-    COMPETENCY_PATH = os.path.join(BASE_RESOURCE_DIR, "ARC_setting", "Competency.json")
-    REALITY_PATH = os.path.join(BASE_RESOURCE_DIR, "ARC_setting", "Reality.json")
-    
-    # Output directory relative to EXE location (TrianglgAgency_charCreater/release/output)
-    # User requested: TrianglgAgency_charCreater/output
-    # If exe is in release folder, we should go up one level then into output?
-    # Or just create output next to exe?
-    # User said: "输出卡片的文件夹为TrianglgAgency_charCreater的output文件夹"
-    # Assuming exe is inside release/, then output should be ../output ?
-    # Let's stick to creating 'output' folder relative to where the app runs.
-    # If the app structure is fixed:
-    # Root/
-    #   release/App.exe
-    #   output/
-    # Then output is os.path.join(os.path.dirname(APP_DIR), "output")
-    
-    CARDS_DIR = os.path.join(os.path.dirname(APP_DIR), "output")
+    CARDS_DIR = os.path.join(PROJECT_ROOT, "output")
 else:
     # Running as script
-    # e:\三角Allin\TrianglgAgency_charCreater\codeFile\json_form_gui.py
-    # BASE_DIR = ...\codeFile
     BASE_DIR = os.path.dirname(os.path.abspath(__file__)) 
-    # PROJECT_ROOT = ...\TrianglgAgency_charCreater
     PROJECT_ROOT = os.path.dirname(BASE_DIR) 
     
-    ANOMALY_PATH = os.path.join(PROJECT_ROOT, "ARC_setting", "Anomaly.json")
-    COMPETENCY_PATH = os.path.join(PROJECT_ROOT, "ARC_setting", "Competency.json")
-    REALITY_PATH = os.path.join(PROJECT_ROOT, "ARC_setting", "Reality.json")
-    
-    # Output: TrianglgAgency_charCreater/output
+    SETTING_DIR = os.path.join(PROJECT_ROOT, "ARC_setting")
     CARDS_DIR = os.path.join(PROJECT_ROOT, "output")
+
+ANOMALY_PATH = os.path.join(SETTING_DIR, "Anomaly.json")
+COMPETENCY_PATH = os.path.join(SETTING_DIR, "Competency.json")
+REALITY_PATH = os.path.join(SETTING_DIR, "Reality.json")
+
+def get_relative_path(path):
+    """Convert absolute path to relative path from PROJECT_ROOT if possible."""
+    if not path: return ""
+    try:
+        # Check if path is within PROJECT_ROOT
+        abs_path = os.path.abspath(path)
+        abs_root = os.path.abspath(PROJECT_ROOT)
+        if abs_path.startswith(abs_root):
+            return os.path.relpath(path, PROJECT_ROOT)
+    except Exception:
+        pass
+    return path
+
+def get_absolute_path(path):
+    """Convert relative path to absolute path based on PROJECT_ROOT."""
+    if not path: return ""
+    if not os.path.isabs(path):
+        return os.path.join(PROJECT_ROOT, path)
+    return path
 
 
 def safe_filename_part(value: str, fallback: str, max_len: int = 50) -> str:
@@ -440,7 +442,8 @@ def main():
         )
         if path:
             img_entry.delete(0, "end")
-            img_entry.insert(0, path)
+            rel_path = get_relative_path(path)
+            img_entry.insert(0, rel_path)
             
     tk.Button(img_frame, text="浏览...", command=pick_image).pack(side="left", padx=5)
 
