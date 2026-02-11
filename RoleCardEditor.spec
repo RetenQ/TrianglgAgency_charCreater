@@ -4,7 +4,10 @@
 a = Analysis(
     ['codeFile\\json_form_gui.py'],
     pathex=[],
-    binaries=[],
+    binaries=[
+        (r'C:\ProgramData\anaconda3\Library\bin\tcl86t.dll', '.'),
+        (r'C:\ProgramData\anaconda3\Library\bin\tk86t.dll', '.')
+    ],
     datas=[('ARC_setting', 'ARC_setting'), ('codeFile/template.html', '.')],
     hiddenimports=[],
     hookspath=[],
